@@ -1,0 +1,23 @@
+.reminders-panel { border: 1px solid var(--line); border-radius: 16px; background: var(--surface-tint); margin: 0 0 20px; padding: 14px 17px; }
+.reminders-heading { align-items: center; color: var(--berry); display: flex; gap: 9px; margin-bottom: 7px; }
+.reminders-heading h2 { font-size: 13px; font-weight: 700; letter-spacing: -.01em; margin: 0; }
+.reminders-list { display: grid; }
+.reminder-item { align-items: center; border-top: 1px solid var(--line-soft); display: grid; gap: 7px; grid-template-columns: minmax(0, 1fr) 34px 34px; padding: 10px 0; }
+.reminder-item:first-child { border-top: 0; }
+.reminder-copy strong { color: var(--navy); font-size: 12px; }
+.reminder-copy p { color: var(--muted); font-size: 11px; line-height: 1.4; margin: 3px 0 0; }
+.reminder-item a, .reminder-item button { align-items: center; background: transparent; border: 0; border-radius: 9px; color: var(--muted); cursor: pointer; display: flex; height: 34px; justify-content: center; width: 34px; }
+.reminder-item a:hover, .reminder-item button:hover { background: var(--berry-soft); color: var(--berry); }
+.reminder-item a:focus-visible, .reminder-item button:focus-visible, .reminder-toggle input:focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
+.reminder-item button:disabled { opacity: .5; cursor: wait; }
+.reminders-skeleton { border-radius: 16px; height: 82px; margin: 0 0 20px; }
+.reminders-error { color: var(--muted); font-size: 12px; margin: 8px 0 16px; }
+.reminders-error button { background: transparent; border: 0; color: var(--berry); cursor: pointer; font: inherit; font-weight: 700; text-decoration: underline; }
+.reminder-settings { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 17px; }
+.reminder-settings h3 { color: var(--navy); font-size: 14px; margin: 0 0 5px; }
+.reminder-settings > p { color: var(--muted); font-size: 11px; line-height: 1.45; margin: 0 0 10px; }
+.reminder-toggle { align-items: center; border-top: 1px solid var(--line-soft); color: var(--navy); display: flex; font-size: 12px; justify-content: space-between; min-height: 42px; }
+.reminder-toggle input { accent-color: var(--berry); cursor: pointer; height: 18px; width: 18px; }
+.reminder-settings-loading { border-radius: 9px; height: 88px; }
+.settings-panel { max-height: min(660px, calc(100dvh - 34px)); overflow-y: auto; overscroll-behavior: contain; }
+@media (max-width: 760px) { .settings-panel { max-height: calc(100dvh - 108px - env(safe-area-inset-bottom)); } }

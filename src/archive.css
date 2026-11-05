@@ -1,0 +1,22 @@
+.archive-page { max-width: 820px; margin: 0 auto; }
+.archive-back { align-items: center; color: var(--berry); display: inline-flex; font-size: 12px; font-weight: 650; gap: 5px; min-height: 36px; text-decoration: none; }
+.archive-intro { color: var(--muted); font-size: 12px; line-height: 1.5; margin: 6px 0 20px; }
+.archive-controls { align-items: end; display: grid; gap: 12px; grid-template-columns: minmax(170px, 230px) minmax(0, 1fr); margin-bottom: 17px; }
+.archive-controls label { color: var(--muted); display: grid; font-size: 11px; font-weight: 600; gap: 6px; }
+.archive-controls select, .archive-controls input { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 10px; color: var(--navy); font: inherit; font-size: 12px; height: 42px; padding: 0 12px; width: 100%; }
+.archive-controls form > div { display: flex; gap: 7px; }
+.archive-controls form button { align-items: center; background: var(--button-bg); border: 0; border-radius: 10px; color: var(--button-fg); cursor: pointer; display: flex; flex: 0 0 42px; justify-content: center; }
+.archive-list { border-top: 1px solid var(--line); }
+.archive-row { align-items: center; border-bottom: 1px solid var(--line); display: grid; gap: 10px; grid-template-columns: minmax(0, 1fr) auto; min-height: 82px; padding: 12px 2px; }
+.archive-kind { color: var(--berry); font-size: 10px; font-weight: 700; text-transform: uppercase; }
+.archive-row h2 { color: var(--navy); font-size: 14px; font-weight: 650; margin: 3px 0; overflow-wrap: anywhere; }
+.archive-row time { color: var(--muted); font-size: 11px; }
+.archive-row button, .archive-pagination button { align-items: center; background: var(--surface-raised); border: 1px solid var(--line); border-radius: 9px; color: var(--navy); cursor: pointer; display: inline-flex; font: inherit; font-size: 11px; font-weight: 650; gap: 6px; justify-content: center; min-height: 38px; padding: 0 11px; }
+.archive-row button:hover, .archive-pagination button:hover:not(:disabled) { border-color: var(--berry); color: var(--berry); }
+.archive-row button:disabled, .archive-pagination button:disabled { cursor: default; opacity: .5; }
+.archive-restore-error { color: var(--warning-text); font-size: 11px; grid-column: 1 / -1; line-height: 1.4; margin: 0; }
+.archive-empty { align-items: center; border: 1px dashed var(--line); border-radius: 16px; color: var(--muted); display: grid; justify-items: center; padding: 35px 20px; text-align: center; }
+.archive-empty h2 { color: var(--navy); font-size: 16px; margin: 12px 0 4px; }.archive-empty p { font-size: 12px; margin: 0; }
+.archive-pagination { align-items: center; color: var(--muted); display: flex; font-size: 11px; gap: 13px; justify-content: center; padding: 18px 0; }
+.archive-page :is(button, input, select, a):focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
+@media (max-width: 540px) { .archive-controls { grid-template-columns: 1fr; }.archive-row { align-items: start; }.archive-row button { align-self: center; } }

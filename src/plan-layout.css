@@ -1,0 +1,57 @@
+.plan-view { max-width: 860px; padding: 0 0 72px; }
+.plan-view > .plan-section { border-top: 0; padding-top: 0; }
+.plan-view .section-heading { margin-bottom: 2px; }
+.plan-view .section-heading h2 { font-size: 20px; }
+.plan-view .section-heading p { margin-bottom: 15px; }
+.plan-view #tasks .section-heading { align-items: center; margin-bottom: 12px; }
+.plan-view .plan-create-form { border-bottom: 1px solid var(--line); gap: 8px; margin: 0 0 12px; padding: 0 0 17px; }
+.plan-view .quick-form.plan-create-form { display: grid; grid-template-columns: minmax(0, 1fr) minmax(105px, 180px) auto auto; }
+.plan-view .area-form.plan-create-form { display: grid; grid-template-columns: minmax(0, 1fr) auto; margin-top: 0; }
+.plan-view .plan-create-form > input,
+.plan-view .goal-form.plan-create-form > input,
+.plan-view .plan-create-form > select,
+.plan-view .goal-form.plan-create-form > select { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 10px; color: var(--navy); font: inherit; font-size: 14px; height: 42px; min-height: 42px; min-width: 0; outline: 0; padding: 0 12px; width: 100%; }
+.plan-view .plan-create-form > input:focus-visible,
+.plan-view .plan-create-form > select:focus-visible { border-color: var(--berry); outline: 2px solid color-mix(in srgb, var(--berry) 24%, transparent); outline-offset: 1px; }
+.plan-view .plan-create-form > button,
+.plan-view .goal-form.plan-create-form > button { align-items: center; background: var(--button-bg); border: 0; border-radius: 10px; color: var(--button-fg); cursor: pointer; display: inline-flex; font: inherit; font-size: 13px; font-weight: 650; gap: 6px; height: 42px; justify-content: center; min-height: 42px; padding: 0 14px; white-space: nowrap; width: auto; }
+.plan-view .task-create-details { align-self: center; font-size: 11px; }
+.plan-view .task-create-details summary { min-height: 40px; padding: 12px 6px; }
+.plan-view .task-create-details[open] { grid-column: 1 / -1; grid-row: 3; }
+.plan-view .goal-form.plan-create-form { grid-template-columns: repeat(3, minmax(0, 1fr)) auto; }
+.plan-view .goal-form.plan-create-form > input { grid-column: 1 / -1; }
+.plan-view .area-list { margin-top: 2px; }
+.plan-view .area-row { min-height: 56px; position: relative; }
+.plan-view .area-row-name { flex: 1 1 0; }
+.goal-row:has(.goal-menu[open]) { position: relative; z-index: 7; }
+.area-menu { flex: 0 0 auto; position: relative; }
+.area-menu summary { align-items: center; border: 1px solid transparent; border-radius: 10px; color: var(--muted); cursor: pointer; display: flex; height: 44px; justify-content: center; list-style: none; width: 44px; }
+.area-menu summary::-webkit-details-marker { display: none; }
+.area-menu summary:hover, .area-menu[open] summary { background: var(--surface-tint); border-color: var(--line); color: var(--navy); }
+.area-menu summary:focus-visible, .area-menu-panel button:focus-visible { outline: 2px solid var(--berry); outline-offset: 2px; }
+.area-menu-panel { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 24px color-mix(in srgb, var(--navy) 12%, transparent); display: grid; min-width: 174px; padding: 5px; position: absolute; right: 0; top: calc(100% + 4px); z-index: 6; }
+.area-menu-panel button { align-items: center; background: transparent; border: 0; border-radius: 8px; color: var(--navy); cursor: pointer; display: flex; font: inherit; font-size: 13px; gap: 9px; min-height: 44px; padding: 0 10px; text-align: left; }
+.area-menu-panel button:hover { background: var(--surface-tint); }
+.area-menu-panel .area-menu-archive { color: var(--warning-text); }
+.area-menu-panel button:disabled { cursor: default; opacity: .45; }
+@media (max-width: 760px) {
+  .plan-view { padding-bottom: calc(90px + env(safe-area-inset-bottom)); }
+  .plan-view .plan-create-form > input,
+  .plan-view .goal-form.plan-create-form > input,
+  .plan-view .plan-create-form > select,
+  .plan-view .goal-form.plan-create-form > select { font-size: 16px; }
+  .plan-view .quick-form.plan-create-form { grid-template-columns: minmax(0, 1fr) auto auto; }
+  .plan-view .quick-form.plan-create-form > input { grid-column: 1 / -1; }
+  .plan-view .quick-form.plan-create-form > select { max-width: none; }
+}
+@media (max-width: 480px) {
+  .plan-view .goal-form.plan-create-form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .plan-view .goal-form.plan-create-form > input { grid-column: 1 / -1; }
+  .plan-view .goal-form.plan-create-form > button { grid-column: 2; }
+  .plan-view .quick-form.plan-create-form { grid-template-columns: minmax(0, 1fr) auto; }
+  .plan-view .quick-form.plan-create-form > input { grid-column: 1 / -1; }
+  .plan-view .quick-form.plan-create-form > select { grid-column: 1; }
+  .plan-view .task-create-details { grid-column: 1; grid-row: 3; }
+  .plan-view .quick-form.plan-create-form > button { grid-column: 2; grid-row: 2; height: 42px; }
+  .plan-view .task-create-details[open] { grid-column: 1 / -1; grid-row: 4; }
+}

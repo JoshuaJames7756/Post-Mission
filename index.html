@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
+    <link rel="apple-touch-icon" href="/icons/post-mission-192.png" />
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f4f0e8" />
+    <meta name="description" content="The mission ended. Your purpose continues." />
+    <title>Post Mission — Your purpose continues</title>
+    <script src="/theme-bootstrap.js"></script>
+    <link rel="preload" href="/fonts/manrope-latin-wght-normal.woff2" as="font" type="font/woff2" crossorigin />
+    <style>
+      @font-face{font-family:Manrope;src:url('/fonts/manrope-latin-wght-normal.woff2') format('woff2');font-style:normal;font-weight:200 800;font-display:swap}
+      #app-launch{position:fixed;inset:0;z-index:10000;display:grid;place-content:center;justify-items:center;gap:18px;background:#f4f0e8;color:#243447;font:600 14px/1.4 Manrope,'Segoe UI',sans-serif;letter-spacing:.08em;transition:opacity .16s ease-out;pointer-events:none}
+      #app-launch svg{width:70px;height:70px;color:#536d58;animation:launch-breathe 2.2s ease-in-out infinite}
+      #app-launch.app-launch-leaving{opacity:0}
+      @keyframes launch-breathe{50%{transform:scale(1.045);opacity:.72}}
+      html[data-theme='dark'] #app-launch{background:#243447;color:#f4f0e8}
+      html[data-theme='dark'] #app-launch svg{color:#f4f0e8}
+      @media(prefers-reduced-motion:reduce){#app-launch{transition:none}#app-launch svg{animation:none}}
+    </style>
+  </head>
+  <body>
+    <div id="app-launch" role="status" aria-label="Abriendo Post Mission"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9" /><path d="m16.24 7.76-2.12 6.36-6.36 2.12 2.12-6.36 6.36-2.12Z" /></svg><span>Post Mission</span></div>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
