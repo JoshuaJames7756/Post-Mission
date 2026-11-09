@@ -7,7 +7,10 @@ const { invalidateQueries, signOut } = vi.hoisted(() => ({ invalidateQueries: vi
 vi.mock('@clerk/react-router', () => ({
   useAuth: () => ({ getToken: async () => 'session-test' }),
   useClerk: () => ({ signOut }),
-  useReverification: (callback: () => Promise<Response>) => callback,
+  useReverification: (callback: () => Promise<unknown>) => async () => {
+    const result = await callback()
+    return result instanceof Response ? result.json() : result
+  },
 }))
 vi.mock('@tanstack/react-query', () => ({ useQueryClient: () => ({ invalidateQueries, clear: vi.fn() }) }))
 
@@ -32,6 +35,16 @@ describe('account deletion confirmation', () => {
     await waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1))
     expect(signOut).not.toHaveBeenCalled()
     await waitFor(() => expect(invalidateQueries).toHaveBeenCalledWith({ queryKey: ['account-deletion', 'user-test'] }))
+  })
+
+  it('shows an API error from the parsed reverification response', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ error: { message: 'Vuelve a verificar tu sesión.' } }), { status: 401 })))
+    render(<AccountDeletionSettings userId="user-test" />)
+    fireEvent.click(screen.getByText('Eliminar cuenta y datos'))
+    fireEvent.change(screen.getByRole('textbox', { name: /Escribe BORRAR MI CUENTA/ }), { target: { value: 'BORRAR MI CUENTA' } })
+    fireEvent.click(screen.getByRole('button', { name: 'Eliminar mi cuenta definitivamente' }))
+    expect((await screen.findByRole('alert')).textContent).toContain('Vuelve a verificar tu sesión.')
+    expect(signOut).not.toHaveBeenCalled()
   })
 
   it('closes a pending session after the server confirms automatic completion', async () => {

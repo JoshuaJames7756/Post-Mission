@@ -5,6 +5,7 @@ import { AlertTriangle, RotateCcw } from 'lucide-react'
 import './account-deletion.css'
 
 export type AccountDeletionStatus = { state: 'none' | 'requested' | 'data_deleted'; nextAttemptAt?: string }
+type DeletionReply = { data?: { state: AccountDeletionStatus['state'] | 'complete' }; error?: { message?: string } }
 
 function useDeletionAction(userId: string) {
   const { getToken } = useAuth()
@@ -14,11 +15,12 @@ function useDeletionAction(userId: string) {
   const [error, setError] = useState('')
   const send = useReverification(async () => {
     const token = await getToken()
-    return fetch('/api/v1/account-deletion', {
+    const response = await fetch('/api/v1/account-deletion', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', ...(token ? { Authorization: `Bearer ${token}` } : {}) },
       body: JSON.stringify({ confirmation: 'BORRAR MI CUENTA' }),
     })
+    return response.json() as Promise<DeletionReply>
   })
 
   async function run() {
@@ -26,10 +28,9 @@ function useDeletionAction(userId: string) {
     setPending(true)
     setError('')
     try {
-      const response = await send()
-      if (!response) return
-      const body = await response.json() as { data?: { state: string }; error?: { message?: string } }
-      if (!response.ok) throw new Error(body.error?.message ?? 'No se pudo iniciar la eliminación.')
+      const body = await send()
+      if (!body) return
+      if (body.error || !body.data) throw new Error(body.error?.message ?? 'No se pudo iniciar la eliminación.')
       if (body.data?.state === 'complete') {
         cache.clear()
         await clerk.signOut({ redirectUrl: '/' })
