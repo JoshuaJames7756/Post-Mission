@@ -15,9 +15,9 @@ import { movedEventInput, resizableEventRange, resizedEventInput, scheduleAllDay
 
 type EventColor = 'sage' | 'amber' | 'navy' | 'slate'
 const eventPresets: { name: string; color: EventColor }[] = [
-  { name: 'Enseñanza', color: 'navy' }, { name: 'Bautismo', color: 'sage' },
-  { name: 'Visita', color: 'sage' }, { name: 'Servicio', color: 'amber' },
-  { name: 'Estudio', color: 'slate' }, { name: 'Personal', color: 'sage' },
+  { name: 'Reunión', color: 'navy' }, { name: 'Estudio', color: 'slate' },
+  { name: 'Trabajo', color: 'amber' }, { name: 'Familia', color: 'sage' },
+  { name: 'Cita', color: 'navy' }, { name: 'Personal', color: 'sage' },
 ]
 const eventColors: { value: EventColor; label: string }[] = [
   { value: 'sage', label: 'Salvia' }, { value: 'amber', label: 'Ámbar' },
