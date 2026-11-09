@@ -3,11 +3,12 @@ import { openStreetMapStandard, type MapTileProvider } from './map-provider.js'
 
 export type MapPoint = { id: string; name: string; latitude: number; longitude: number; type: string }
 
-export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, focusPoint, selectionActive = false, provider = openStreetMapStandard, onMarkerClick, onMapClick, onTileError }: {
+export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, focusPoint, userLocation, selectionActive = false, provider = openStreetMapStandard, onMarkerClick, onMapClick, onTileError }: {
   places: MapPoint[]
   defaultCenter?: [number, number]
   defaultZoom?: number
   focusPoint?: [number, number] | null
+  userLocation?: [number, number] | null
   selectionActive?: boolean
   provider?: MapTileProvider
   onMarkerClick: (placeId: string) => void
@@ -19,8 +20,10 @@ export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, foc
   const mapCallback = useRef(onMapClick)
   const errorCallback = useRef(onTileError)
   const focusedPoint = useRef(focusPoint)
+  const locationPoint = useRef(userLocation)
   const selectionEnabled = useRef(selectionActive)
   const mapInstance = useRef<import('leaflet').Map | null>(null)
+  const userMarker = useRef<import('leaflet').CircleMarker | null>(null)
   useEffect(() => {
     markerCallback.current = onMarkerClick
     mapCallback.current = onMapClick
@@ -31,6 +34,19 @@ export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, foc
     focusedPoint.current = focusPoint
     if (focusPoint) mapInstance.current?.setView(focusPoint, 16)
   }, [focusPoint])
+
+  useEffect(() => {
+    locationPoint.current = userLocation
+    const map = mapInstance.current
+    if (!map || !userLocation) return
+    if (userMarker.current) userMarker.current.setLatLng(userLocation)
+    else {
+      void import('leaflet').then((leaflet) => {
+        if (mapInstance.current !== map) return
+        userMarker.current = leaflet.circleMarker(userLocation, { radius: 8, color: '#fff', weight: 3, fillColor: '#245fba', fillOpacity: 1 }).addTo(map).bindTooltip('Tu ubicación aproximada')
+      })
+    }
+  }, [userLocation])
 
   useEffect(() => { selectionEnabled.current = selectionActive }, [selectionActive])
 
@@ -43,6 +59,8 @@ export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, foc
       if (disposed || !host.current) return
       map = leaflet.map(host.current, { zoomControl: true, attributionControl: false })
       mapInstance.current = map
+      userMarker.current = null
+      if (locationPoint.current) userMarker.current = leaflet.circleMarker(locationPoint.current, { radius: 8, color: '#fff', weight: 3, fillColor: '#245fba', fillOpacity: 1 }).addTo(map).bindTooltip('Tu ubicación aproximada')
       leaflet.control.attribution({ position: 'topright', prefix: false }).addTo(map)
       leaflet.tileLayer(provider.tileUrl, { maxZoom: provider.maxZoom, attribution: provider.attribution }).addTo(map)
         .on('tileerror', () => errorCallback.current())
@@ -72,6 +90,7 @@ export function MapCanvas({ places, defaultCenter = [0, 0], defaultZoom = 2, foc
       disposed = true
       map?.remove()
       mapInstance.current = null
+      userMarker.current = null
     }
   }, [places, provider, defaultCenter, defaultZoom])
 

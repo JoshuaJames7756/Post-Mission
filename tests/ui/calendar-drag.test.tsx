@@ -4,7 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { afterEach, expect, it, vi } from 'vitest'
 import { CalendarPage } from '../../src/calendar-page.js'
 
-afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals() })
+afterEach(() => { cleanup(); vi.useRealTimers(); vi.unstubAllGlobals(); vi.restoreAllMocks(); delete (HTMLDialogElement.prototype as Partial<HTMLDialogElement>).showModal; delete (HTMLDialogElement.prototype as Partial<HTMLDialogElement>).close })
 
 it('moves a timed event by dragging and saves its new time once', async () => {
   vi.useFakeTimers({ toFake: ['Date'] })
@@ -47,5 +47,22 @@ it('places a single-day all-day event on the hourly timeline', async () => {
   await waitFor(() => expect(request).toHaveBeenCalledWith('/events/study', expect.objectContaining({ method: 'PATCH' })))
   const save = request.mock.calls.find(([path]) => path === '/events/study')
   expect(JSON.parse(save?.[1]?.body as string)).toMatchObject({ allDay: false, startLocal: '2026-11-03T09:30', endLocal: '2026-11-03T10:30' })
+  client.clear()
+})
+
+it('opens event creation over the agenda and applies a quick event type', async () => {
+  Object.defineProperty(HTMLDialogElement.prototype, 'showModal', { configurable: true, value: function (this: HTMLDialogElement) { this.setAttribute('open', '') } })
+  Object.defineProperty(HTMLDialogElement.prototype, 'close', { configurable: true, value: function (this: HTMLDialogElement) { this.removeAttribute('open') } })
+  vi.spyOn(window, 'scrollTo').mockImplementation(() => {})
+  const request = vi.fn(async () => [])
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  render(<QueryClientProvider client={client}><CalendarPage userId="test-user" timeZone="America/La_Paz" goals={[]} request={request} /></QueryClientProvider>)
+  fireEvent.click(await screen.findByRole('button', { name: 'Añadir evento' }))
+  expect(screen.getByRole('dialog', { name: 'Crear evento' })).toBeTruthy()
+  fireEvent.click(screen.getByRole('button', { name: 'Bautismo' }))
+  expect((screen.getByRole('textbox', { name: 'Categoría' }) as HTMLInputElement).value).toBe('Bautismo')
+  expect(screen.getByRole('button', { name: 'Color Salvia' }).getAttribute('aria-pressed')).toBe('true')
+  fireEvent.click(screen.getByRole('button', { name: 'Cerrar formulario' }))
+  expect(screen.queryByRole('dialog')).toBeNull()
   client.clear()
 })

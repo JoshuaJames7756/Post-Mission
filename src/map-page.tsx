@@ -1,6 +1,6 @@
 import { useMemo, useState, type FormEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, ArrowRight, List, Map as MapIcon, MapPin, MoreHorizontal, Pencil, RotateCcw, Search, X } from 'lucide-react'
+import { Archive, ArrowRight, List, LocateFixed, Map as MapIcon, MapPin, MoreHorizontal, Pencil, RotateCcw, Search, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { addCalendarDays, getCalendarDate } from './date-utils.js'
 import { LoadingState } from './loading-state.js'
@@ -16,6 +16,7 @@ type Request = <T>(path: string, options?: RequestInit) => Promise<T>
 
 const typeLabels: Record<PlaceType, string> = { home: 'Casa', church: 'Iglesia', work: 'Trabajo', school: 'Estudios', community: 'Comunidad', other: 'Otro' }
 const emptyForm = { name: '', type: 'other' as PlaceType, address: '', latitude: '', longitude: '' }
+const worldCenter: [number, number] = [0, 0]
 
 export function MapPage({ userId, timeZone, request }: { userId: string; timeZone: string; request: Request }) {
   const queryClient = useQueryClient()
@@ -33,9 +34,11 @@ export function MapPage({ userId, timeZone, request }: { userId: string; timeZon
   const [expandedPlaceId, setExpandedPlaceId] = useState<string | null>(null)
   const [selectedEventIds, setSelectedEventIds] = useState<string[] | null>(null)
   const [mapCoordinateNotice, setMapCoordinateNotice] = useState(false)
+  const [userLocation, setUserLocation] = useState<[number, number] | null>(null)
+  const [locating, setLocating] = useState(false)
+  const [locationError, setLocationError] = useState('')
   const from = getCalendarDate(new Date(), timeZone)
   const to = addCalendarDays(from, 89)
-  const defaultMapCenter = useMemo<[number, number]>(() => timeZone === 'America/La_Paz' ? [-16.5, -68.15] : [0, 0], [timeZone])
   const placesQuery = useQuery({ queryKey: ['places', userId, searchQuery], queryFn: () => request<Place[]>(`/places${searchQuery ? `?q=${encodeURIComponent(searchQuery)}` : ''}`), placeholderData: (previous, query) => query?.queryKey[1] === userId ? previous : undefined })
   const searching = search.trim() !== searchQuery || (placesQuery.isFetching && !placesQuery.isLoading)
   const archivedQuery = useQuery({ queryKey: ['places-archived', userId], queryFn: () => request<Place[]>('/places?archived=true') })
@@ -161,6 +164,24 @@ export function MapPage({ userId, timeZone, request }: { userId: string; timeZon
     window.setTimeout(() => document.getElementById('map-panel')?.scrollIntoView?.({ behavior: 'smooth', block: 'start' }), 0)
   }
 
+  const locateMe = () => {
+    if (!navigator.geolocation) { setLocationError('Tu dispositivo no ofrece ubicación.'); return }
+    setLocating(true)
+    setLocationError('')
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setSelectedPlaceId(null)
+        setUserLocation([position.coords.latitude, position.coords.longitude])
+        setLocating(false)
+      },
+      (error) => {
+        setLocating(false)
+        setLocationError(error.code === 1 ? 'Permite el acceso a la ubicación para centrar el mapa.' : 'No pudimos obtener tu ubicación. Inténtalo de nuevo.')
+      },
+      { enableHighAccuracy: false, timeout: 10_000, maximumAge: 60_000 },
+    )
+  }
+
   return <section className="map-page" aria-label="Mapa">
     <SectionTopbar className="section-topbar-map" title="Mapa" icon={MapIcon} actions={<button type="button" className="map-add-button" onClick={startNewPlace}><MapPin size={15} />Añadir lugar</button>} />
     <div className="map-mode-switch" role="group" aria-label="Vista de lugares"><button type="button" aria-pressed={view === 'list'} onClick={() => setView('list')}><List size={16} aria-hidden="true" />Lista</button><button type="button" aria-pressed={view === 'map'} onClick={() => { setMapError(false); setView('map') }}><MapIcon size={16} aria-hidden="true" />Mapa</button></div>
@@ -168,9 +189,11 @@ export function MapPage({ userId, timeZone, request }: { userId: string; timeZon
       {!mapConsent && <div className="map-privacy-notice"><p>La dirección es una referencia privada y no se convierte sola en un punto. Al cargar OpenStreetMap, el proveedor recibe solo la zona visible para entregar el mapa, no los nombres ni las direcciones guardados aquí.</p><button className="map-load-button" onClick={() => { setMapError(false); setMapConsent(true) }}>Cargar mapa de OpenStreetMap</button><a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noreferrer">Licencia y privacidad</a></div>}
       {mapConsent && <>
         <div className="map-canvas-wrap">
-        <MapCanvas key={mapAttempt} places={mappedPlaces} defaultCenter={defaultMapCenter} defaultZoom={timeZone === 'America/La_Paz' ? 12 : 2} focusPoint={focusPoint} selectionActive={mapSelectionActive} onMarkerClick={setSelectedPlaceId} onMapClick={handleMapClick} onTileError={() => setMapError(true)} />
+        <MapCanvas key={mapAttempt} places={mappedPlaces} defaultCenter={worldCenter} defaultZoom={2} focusPoint={focusPoint ?? userLocation} userLocation={userLocation} selectionActive={mapSelectionActive} onMarkerClick={setSelectedPlaceId} onMapClick={handleMapClick} onTileError={() => setMapError(true)} />
+        <button className="map-locate-button" type="button" onClick={locateMe} disabled={locating}><LocateFixed size={16} aria-hidden="true" />{locating ? 'Buscando…' : 'Mi ubicación'}</button>
         {selectedPlace && <div className="map-selected-place" role="region" aria-label={`Lugar seleccionado: ${selectedPlace.name}`}><div className="map-selected-info"><strong>{selectedPlace.name}</strong><span>{selectedPlace.address || typeLabels[selectedPlace.type]}</span></div><button type="button" className="map-selected-open" onClick={() => showPlaceCard(selectedPlace)}>Ver ficha <ArrowRight size={14} /></button><button type="button" className="map-selected-edit" aria-label={`Editar ${selectedPlace.name}`} onClick={() => editPlace(selectedPlace)}><Pencil size={14} /></button><button type="button" aria-label="Cerrar detalle del lugar" onClick={() => setSelectedPlaceId(null)}><X size={14} /></button></div>}
         </div>
+        {locationError && <p className="map-location-error" role="alert">{locationError}</p>}
         {mapError && <div className="map-tile-error" role="alert"><p>No pudimos cargar algunas imágenes del mapa. Tus lugares siguen disponibles.</p><div><button type="button" onClick={() => { setMapError(false); setMapAttempt((attempt) => attempt + 1) }}>Reintentar mapa</button><button type="button" onClick={() => setView('list')}>Ver lista</button></div></div>}
         {mapSelectionActive && <p className="map-click-help" role="status">{mapCoordinateNotice ? 'Punto seleccionado. Puedes tocar otro lugar para moverlo.' : 'Toca el punto exacto que quieres guardar.'}</p>}
         {mapCoordinateNotice && <p className="map-coordinate-status" role="status">Punto listo. <button type="button" onClick={() => document.querySelector('.place-form')?.scrollIntoView({ behavior: 'smooth', block: 'center' })}>Volver al formulario y guardar</button></p>}

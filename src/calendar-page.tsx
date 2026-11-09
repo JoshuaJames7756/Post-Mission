@@ -14,6 +14,15 @@ import { eventOccursOnDate, eventTimelineRange } from './calendar-display.js'
 import { movedEventInput, resizableEventRange, resizedEventInput, scheduleAllDayEventInput, snapEventEnd, snapEventStart } from './calendar-drag.js'
 
 type EventColor = 'sage' | 'amber' | 'navy' | 'slate'
+const eventPresets: { name: string; color: EventColor }[] = [
+  { name: 'Enseñanza', color: 'navy' }, { name: 'Bautismo', color: 'sage' },
+  { name: 'Visita', color: 'sage' }, { name: 'Servicio', color: 'amber' },
+  { name: 'Estudio', color: 'slate' }, { name: 'Personal', color: 'sage' },
+]
+const eventColors: { value: EventColor; label: string }[] = [
+  { value: 'sage', label: 'Salvia' }, { value: 'amber', label: 'Ámbar' },
+  { value: 'navy', label: 'Azul' }, { value: 'slate', label: 'Gris' },
+]
 type CalendarEvent = {
   id: string
   title: string
@@ -101,6 +110,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   const queryClient = useQueryClient()
   const timelineScrollRef = useRef<HTMLDivElement>(null)
   const addEventButtonRef = useRef<HTMLButtonElement>(null)
+  const eventDialogRef = useRef<HTMLDialogElement>(null)
   const formTriggerRef = useRef<HTMLElement | null>(null)
   const positionedDayRef = useRef<string | null>(null)
   const dragGestureRef = useRef<DragGesture | null>(null)
@@ -140,6 +150,13 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   const [eventTimeZone, setEventTimeZone] = useState(timeZone)
   const [startOffset, setStartOffset] = useState<number | null>(null)
   const [endOffset, setEndOffset] = useState<number | null>(null)
+
+  useEffect(() => {
+    const dialog = eventDialogRef.current
+    if (!dialog) return
+    if (formOpen && !dialog.open) dialog.showModal()
+    else if (!formOpen && dialog.open) dialog.close()
+  }, [formOpen])
 
   const dates = useMemo(() => monthGrid(month), [month])
   const visibleWeekDays = useMemo(() => weekDays(selectedDate), [selectedDate])
@@ -579,8 +596,10 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
       </>}
     </>}
 
-    {formOpen && <form className="calendar-event-form" onSubmit={submitEvent} onKeyDown={(event) => { if (event.key === 'Escape') { event.preventDefault(); closeForm() } }} aria-label={editingEvent ? 'Editar evento' : 'Crear evento'}>
+    <dialog ref={eventDialogRef} className="calendar-event-dialog" aria-label={editingEvent ? 'Editar evento' : 'Crear evento'} onCancel={(event) => { event.preventDefault(); closeForm() }} onClick={(event) => { if (event.target === event.currentTarget) closeForm() }}>
+    {formOpen && <form className="calendar-event-form" onSubmit={submitEvent}>
       <div className="calendar-form-heading"><div><p className="setup-eyebrow">{editingEvent ? 'Actualizar' : 'Planifica'}</p><h2>{editingEvent ? 'Editar evento' : 'Nuevo evento'}</h2></div><button type="button" className="calendar-close" aria-label="Cerrar formulario" onClick={closeForm}><X size={17} /></button></div>
+      {!editingEvent && <div className="calendar-presets"><span>¿Qué vas a planificar?</span><div>{eventPresets.map((preset) => <button key={preset.name} type="button" aria-pressed={category === preset.name} onClick={() => { setCategory(preset.name); setColor(preset.color); setAllDay(false) }}><span className={`color-swatch-dot color-swatch-${preset.color}`} aria-hidden="true" />{preset.name}</button>)}</div></div>}
       <label>Título<input autoFocus required maxLength={160} value={title} onChange={(event) => setTitle(event.target.value)} placeholder="¿Qué tienes en tu agenda?" /></label>
       <div className="calendar-form-row">
         <label>Tipo<select value={allDay ? 'all-day' : 'timed'} onChange={(event) => setAllDay(event.target.value === 'all-day')}><option value="all-day">Todo el día</option><option value="timed">Con hora</option></select></label>
@@ -605,7 +624,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
         {endOptions.length > 1 && selectedEndOffset === null && <p className="calendar-help" role="status">La hora final ocurre dos veces; elige el desfase correcto.</p>}
       </>}
       <div className="calendar-form-row">
-        <label>Color<select value={color} onChange={(event) => setColor(event.target.value as EventColor)}><option value="sage">Salvia</option><option value="amber">Ámbar</option><option value="navy">Azul noche</option><option value="slate">Pizarra</option></select></label>
+        <fieldset className="color-choice"><legend>Color</legend><div>{eventColors.map((option) => <button key={option.value} type="button" className="color-swatch-button" aria-label={`Color ${option.label}`} aria-pressed={color === option.value} title={option.label} onClick={() => setColor(option.value)}><span className={`color-swatch-dot color-swatch-${option.value}`} /></button>)}</div></fieldset>
         <label>Meta relacionada<select value={goalId} onChange={(event) => setGoalId(event.target.value)}><option value="">Sin meta</option>{goals.map((goal) => <option key={goal.id} value={goal.id}>{goal.title}</option>)}</select></label>
       </div>
       <label>Notas del evento<textarea maxLength={2000} rows={3} value={description} onChange={(event) => setDescription(event.target.value)} /></label>
@@ -620,6 +639,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
         <button className="calendar-save-button" type="submit" disabled={mutation.isPending || datesInvalid || timeInputInvalid}>{mutation.isPending ? 'Guardando…' : editingEvent ? 'Guardar cambios' : 'Guardar evento'}</button>
       </div>
     </form>}
+    </dialog>
 
     <details className="calendar-archived">
       <summary>Eventos archivados ({archivedEvents.data?.length ?? 0})</summary>

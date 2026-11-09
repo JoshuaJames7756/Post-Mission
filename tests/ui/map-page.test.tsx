@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { MapPage } from '../../src/map-page.js'
 
@@ -8,7 +8,7 @@ vi.mock('../../src/map/map-canvas.js', () => ({
   MapCanvas: ({ focusPoint, onTileError }: { focusPoint?: [number, number] | null; onTileError: () => void }) => <div data-testid="map-canvas">{focusPoint?.join(',')}<button type="button" onClick={onTileError}>Simular fallo de imágenes</button></div>,
 }))
 
-afterEach(() => cleanup())
+afterEach(() => { cleanup(); vi.unstubAllGlobals() })
 
 describe('Map page privacy gate', () => {
   it('does not mount the tile map until the user accepts the provider notice', async () => {
@@ -66,5 +66,21 @@ describe('Map page privacy gate', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Ver lista' }))
     expect(screen.queryByTestId('map-canvas')).toBeNull()
     expect(screen.getByRole('searchbox', { name: 'Buscar lugares' })).toBeTruthy()
+  })
+
+  it('centers on the device location only after the user requests it', async () => {
+    const request = vi.fn(async <T,>() => [] as T)
+    const getCurrentPosition = vi.fn((success: PositionCallback) => success({ coords: { latitude: -13.52, longitude: -71.97 } } as GeolocationPosition))
+    vi.stubGlobal('navigator', Object.create(navigator, { geolocation: { value: { getCurrentPosition } } }))
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    render(<QueryClientProvider client={client}><MapPage userId="user-test" timeZone="America/La_Paz" request={request} /></QueryClientProvider>)
+    fireEvent.click(screen.getByRole('button', { name: 'Mapa' }))
+    fireEvent.click(screen.getByRole('button', { name: 'Cargar mapa de OpenStreetMap' }))
+    expect(getCurrentPosition).not.toHaveBeenCalled()
+    expect((await screen.findByTestId('map-canvas')).textContent).not.toContain('-16.5,-68.15')
+    fireEvent.click(screen.getByRole('button', { name: 'Mi ubicación' }))
+    await waitFor(() => expect(screen.getByTestId('map-canvas').textContent).toContain('-13.52,-71.97'))
+    expect(getCurrentPosition).toHaveBeenCalledTimes(1)
+    client.clear()
   })
 })
