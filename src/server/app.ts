@@ -7,7 +7,6 @@ import { registerTaskRoutes } from './modules/tasks/routes.js'
 import { registerEventRoutes } from './modules/events/routes.js'
 import { registerPeopleRoutes } from './modules/people/routes.js'
 import { registerPlaceRoutes } from './modules/places/routes.js'
-import { registerExampleRoutes } from './modules/examples/routes.js'
 import { registerJourneyRoutes } from './modules/journey/routes.js'
 import { registerNoteRoutes } from './modules/notes/routes.js'
 import { registerReviewRoutes } from './modules/reviews/routes.js'
@@ -34,7 +33,6 @@ export function createApp() {
   registerEventRoutes(app)
   registerPeopleRoutes(app)
   registerPlaceRoutes(app)
-  registerExampleRoutes(app)
   registerJourneyRoutes(app)
   registerNoteRoutes(app)
   registerReviewRoutes(app)

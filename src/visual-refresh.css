@@ -227,13 +227,6 @@
 .people-empty { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; max-width: 620px; padding: 20px; }
 .home-next-card { border-left: 4px solid var(--sage); border-radius: 20px; min-height: 0; }
 .home-next-card h2 { font-family: var(--sans); font-size: clamp(1.45rem, 3vw, 2rem); font-weight: 650; letter-spacing: -.025em; line-height: 1.2; }
-.home-examples { align-items: center; background: var(--surface-tint); border: 1px solid var(--line); border-radius: 15px; display: flex; gap: 14px; justify-content: space-between; margin: 0 0 22px; padding: 14px 16px; }
-.home-examples div { display: grid; gap: 3px; }
-.home-examples strong { color: var(--navy); font-size: 13px; }
-.home-examples span { color: var(--muted); font-size: 11px; line-height: 1.45; }
-.home-examples button { background: var(--button-bg); border: 0; border-radius: 10px; color: var(--button-fg); cursor: pointer; flex: 0 0 auto; font: inherit; font-size: 11px; font-weight: 650; min-height: 40px; padding: 0 14px; }
-.home-examples button:disabled { cursor: wait; opacity: .65; }
-.home-examples button:focus-visible { outline: 2px solid var(--sage-dark); outline-offset: 3px; }
 .home-purpose { background: var(--surface-tint); border-left: 3px solid var(--berry); border-radius: 0 15px 15px 0; margin: 0 0 22px; padding: 16px 18px; }
 .home-purpose-heading { align-items: center; display: flex; justify-content: space-between; }
 .home-purpose .setup-eyebrow { margin: 0 0 3px; }
@@ -261,7 +254,6 @@
 .home-weekly a { align-items: center; color: var(--sage-dark); display: inline-flex; font-size: 12px; font-weight: 650; gap: 5px; margin-left: auto; min-height: 36px; text-decoration: none; }
 .home-weekly a:focus-visible { outline: 2px solid var(--sage-dark); outline-offset: 2px; }
 @media (max-width: 760px) { .home-grid { padding-bottom: 20px; } .home-weekly { align-items: flex-start; gap: 10px 16px; } .home-weekly > div { flex-basis: 100%; } .home-weekly p { flex: 1 1 125px; } .home-weekly a { margin-left: 0; } }
-@media (max-width: 520px) { .home-examples { align-items: stretch; flex-direction: column; } .home-examples button { align-self: flex-start; } }
 
 .person-form-grid input, .person-form-grid select, .person-form-grid textarea,
 .place-form-grid input, .place-form-grid select,

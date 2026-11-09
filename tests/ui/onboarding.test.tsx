@@ -12,7 +12,9 @@ describe('first use onboarding', () => {
       if (path === '/life-areas' && rejectArea) throw new Error('Sin conexión')
       return {} as T
     })
-    render(<OnboardingFlow profile={null} areas={[]} goals={[]} request={request} refresh={async () => {}} />)
+    const onComplete = vi.fn()
+    render(<OnboardingFlow profile={null} areas={[]} goals={[]} request={request} refresh={async () => {}} onComplete={onComplete} />)
+    expect(screen.getByRole('main').className).toContain('onboarding-shell')
 
     fireEvent.change(screen.getByRole('textbox', { name: '¿Cómo quieres que te llamemos?' }), { target: { value: 'Ana' } })
     fireEvent.click(screen.getByRole('button', { name: /Guardar y continuar/ }))
@@ -31,6 +33,7 @@ describe('first use onboarding', () => {
     await screen.findByRole('heading', { name: 'Listo para comenzar.' })
     fireEvent.click(screen.getByRole('button', { name: 'Entrar a mi espacio' }))
     await waitFor(() => expect(request).toHaveBeenCalledWith('/me/onboarding/complete', expect.objectContaining({ method: 'POST' })))
+    await waitFor(() => expect(onComplete).toHaveBeenCalledOnce())
     expect(request).not.toHaveBeenCalledWith('/goals', expect.anything())
   })
 })

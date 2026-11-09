@@ -75,7 +75,6 @@ describe('private API boundary', () => {
     ['POST', '/api/v1/places/00000000-0000-4000-8000-000000000001/restore'],
     ['GET', '/api/v1/places/00000000-0000-4000-8000-000000000001/events'],
     ['PUT', '/api/v1/places/00000000-0000-4000-8000-000000000001/events'],
-    ['POST', '/api/v1/examples'],
     ['GET', '/api/v1/journey'],
     ['PATCH', '/api/v1/journey'],
     ['GET', '/api/v1/journey/milestones'],

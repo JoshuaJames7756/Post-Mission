@@ -5,7 +5,6 @@ import { Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, Check, Circle, C
 import { Toaster, toast } from 'sonner'
 import { getTodayFocusTasks } from './home.js'
 import { moveDueAtToToday, pendingDayLabel } from './soft-rollover.js'
-import { EXAMPLE_AREA_NAME } from './shared/example-data.js'
 import { filterTasks, type TaskPriorityFilter } from './task-filters.js'
 import { SectionBoundary } from './section-boundary.js'
 import { GoalTree } from './goal-tree.js'
@@ -277,15 +276,6 @@ function Workspace() {
     },
     onSettled: (_data, _error, _variables, context) => { if (!context?.queued) void queryClient.invalidateQueries({ queryKey: keys.tasks }) },
   })
-  const exampleMutation = useMutation({
-    mutationFn: () => apiRequest<{ created: boolean }>(getToken, '/examples', { method: 'POST' }),
-    onSuccess: (result) => {
-      void queryClient.invalidateQueries()
-      toast.success(result.created ? 'Ejemplos añadidos a tu espacio.' : 'Ya tienes los ejemplos cargados.')
-    },
-    onError: (error) => toast.error(error instanceof Error ? error.message : 'No pudimos cargar los ejemplos.'),
-  })
-
   const syncPendingTasks = useCallback(async () => {
     if (!userId || !navigator.onLine || syncingTasksRef.current || syncBlockedRef.current || pendingTasksRef.current.length === 0) return
     syncingTasksRef.current = true
@@ -419,7 +409,6 @@ function Workspace() {
   const taskFiltersActive = taskSearch.trim().length > 0 || taskPriorityFilter !== 'all'
   const focusEvents = (homeEvents.data ?? []).filter((event) => event.status === 'scheduled').sort((left, right) => Number(left.allDay) === Number(right.allDay) ? (left.startAt ?? '').localeCompare(right.startAt ?? '') : left.allDay ? -1 : 1).slice(0, 2)
   const focusTasks = getTodayFocusTasks(visibleTasks, todayDate, profileTimeZone, 4 - focusEvents.length)
-  const hasExamples = [...(areas.data ?? []), ...(archivedAreas.data ?? [])].some((area) => area.name === EXAMPLE_AREA_NAME)
   const settingsNameValue = settingsName ?? profile.data?.displayName ?? ''
   const settingsThemeValue = settingsTheme ?? profile.data?.themePreference ?? 'system'
   const busy = areas.isLoading || goals.isLoading || tasks.isLoading || profile.isLoading
@@ -446,6 +435,14 @@ function Workspace() {
   }
 
   if (accountDeletion.data && accountDeletion.data.state !== 'none') return <Suspense fallback={<SkeletonRows label="cierre de cuenta" rows={2} />}><AccountDeletionPendingScreen userId={userId ?? ''} status={accountDeletion.data} /></Suspense>
+
+  if (authReady && !profile.data?.onboardingCompletedAt) {
+    const onboardingLoading = profile.isLoading || areas.isLoading || goals.isLoading || accountDeletion.isLoading
+    const onboardingError = profile.error ?? areas.error ?? goals.error ?? accountDeletion.error
+    if (onboardingLoading) return <main className="onboarding-shell onboarding-shell-status"><SkeletonRows label="tu bienvenida" rows={3} /></main>
+    if (onboardingError) return <main className="onboarding-shell onboarding-shell-status"><div className="error-banner" role="alert"><p>{loadErrorMessage(onboardingError, 'No pudimos preparar tu bienvenida.')}</p><button type="button" onClick={() => { void queryClient.invalidateQueries() }}>Intentar de nuevo</button></div></main>
+    return <OnboardingFlow profile={profile.data ?? null} areas={areas.data ?? []} goals={goals.data ?? []} request={(path, options) => apiRequest(getToken, path, options)} refresh={async () => { await queryClient.invalidateQueries() }} onComplete={() => { window.location.hash = '#home' }} />
+  }
 
   return <main className="plan-page" id="plan">
     {(!isOnline || pendingTasks.length > 0) && <div className="connection-badge" role="status"><WifiOff size={14} aria-hidden="true" /><span>{!isOnline ? `Trabajando sin conexión${pendingTasks.length ? ` · ${pendingTasks.length} cambio${pendingTasks.length === 1 ? '' : 's'} pendiente${pendingTasks.length === 1 ? '' : 's'}` : ''}` : `${pendingTasks.length} cambio${pendingTasks.length === 1 ? '' : 's'} por sincronizar`}</span>{isOnline && pendingTasks.length > 0 && <button type="button" onClick={() => { syncBlockedRef.current = false; void syncPendingTasks() }}>Reintentar</button>}</div>}
@@ -507,8 +504,7 @@ function Workspace() {
       <section className="plan-intro home-intro"><div className="home-greeting"><span className="home-avatar" aria-hidden="true">{user?.imageUrl ? <img src={user.imageUrl} alt="" /> : (profile.data?.displayName ?? user?.firstName ?? 'P').trim().charAt(0).toLocaleUpperCase()}</span><div><h1>{profile.data?.displayName ? `Hola, ${profile.data.displayName}.` : 'Un paso a la vez.'}</h1><p className="home-date">{new Intl.DateTimeFormat('es', { weekday: 'long', day: 'numeric', month: 'long', timeZone: profileTimeZone }).format(new Date())}</p></div></div></section>
       {busy && <SkeletonRows label="tu inicio" rows={2} />}
       {failure && <div className="error-banner" role="alert"><p>{loadErrorMessage(failure, 'No se pudo cargar tu espacio.')}</p><button onClick={() => { void queryClient.invalidateQueries() }}>Intentar de nuevo</button></div>}
-      {!busy && !failure && (!profile.data?.onboardingCompletedAt ? <OnboardingFlow profile={profile.data ?? null} areas={areas.data ?? []} goals={goals.data ?? []} request={(path, options) => apiRequest(getToken, path, options)} refresh={async () => { await queryClient.invalidateQueries() }} /> : <>
-        {profile.data && !archivedAreas.isLoading && !hasExamples && <div className="home-examples"><div><strong>Prueba la app sin llenar todo a mano</strong><span>Agrega datos ficticios conectados en Plan, Agenda, Personas y Mapa. Podrás editarlos o archivarlos.</span></div><button type="button" onClick={() => exampleMutation.mutate()} disabled={exampleMutation.isPending}>{exampleMutation.isPending ? 'Cargando ejemplos…' : 'Cargar ejemplos'}</button></div>}
+      {!busy && !failure && <>
         {profile.data && <section className="home-purpose" aria-labelledby="home-purpose-title">
           <div className="home-purpose-heading"><div><p className="setup-eyebrow">Tu dirección</p><h2 id="home-purpose-title">Mi propósito</h2></div>{!editingPurpose && <button type="button" onClick={() => { setPurposeDraft(profile.data?.purpose ?? ''); setEditingPurpose(true) }}>{profile.data.purpose ? 'Editar' : 'Añadir'}</button>}</div>
           {editingPurpose ? <form onSubmit={savePurpose}><label htmlFor="purpose-draft">¿Qué quieres cuidar en esta etapa?</label><textarea id="purpose-draft" value={purposeDraft} onChange={(event) => setPurposeDraft(event.target.value)} maxLength={500} rows={3} placeholder="Por ejemplo: cuidar mis relaciones y seguir aprendiendo." /><div className="home-purpose-actions"><button type="button" onClick={() => setEditingPurpose(false)}>Cancelar</button><button type="submit" disabled={mutation.isPending}>{mutation.isPending ? 'Guardando…' : 'Guardar propósito'}</button></div></form> : <p className={profile.data.purpose ? 'home-purpose-text' : 'home-purpose-empty'}>{profile.data.purpose || 'Escribe una frase que te recuerde lo importante para ti.'}</p>}
@@ -520,13 +516,13 @@ function Workspace() {
           <div className="home-focus-list">
             {focusEvents.map((event) => { const area = areaForGoal(event.goalId, goals.data ?? [], areas.data ?? []); return <label className="home-focus-item" key={`event-${event.id}`}><input type="checkbox" checked={false} aria-label={`Completar evento ${event.title}`} disabled={mutation.isPending || Boolean(accountDeletion.isError)} onChange={() => mutation.mutate({ path: `/events/${event.id}/complete` })} /><span className="home-focus-copy"><span className="home-focus-titleline"><strong>{event.title}</strong>{area && <AreaTag name={area.name} />}</span><small>Evento · {event.allDay ? 'Todo el día' : event.startAt ? formatTaskDate(event.startAt, profileTimeZone, { hour: '2-digit', minute: '2-digit' }) : 'Hoy'}</small></span></label> })}
             {focusTasks.map((task) => { const area = areaForGoal(task.goalId, goals.data ?? [], areas.data ?? []); const pendingLabel = taskPendingLabel(task); return <div className={`home-focus-item${celebratingTaskIds.includes(task.id) ? ' home-focus-item-celebrating' : ''}`} key={`task-${task.id}`}><label className="home-focus-task-control"><input type="checkbox" checked={celebratingTaskIds.includes(task.id)} aria-label={`Completar tarea ${task.title}`} disabled={taskStatusMutation.isPending || Boolean(accountDeletion.isError) || celebratingTaskIds.includes(task.id)} onChange={() => toggleTask(task)} /><span className="home-focus-copy"><span className="home-focus-titleline"><strong>{task.title}</strong>{area && <AreaTag name={area.name} />}</span><small className={pendingLabel ? 'task-deadline-pending' : undefined}>Tarea · {task.dueAt ? pendingLabel ?? `Para hoy, ${formatTaskDate(task.dueAt, profileTimeZone, { hour: '2-digit', minute: '2-digit' })}` : `Prioridad ${priorityLabel(task.priority).toLowerCase()}`}</small></span></label>{pendingLabel && <button className="home-rollover" type="button" aria-label={`Mover ${task.title} a hoy`} title="Mover a hoy" onClick={() => moveTaskToToday(task)} disabled={rolloverMutation.isPending || !isOnline || Boolean(accountDeletion.isError)}><RotateCcw size={15} aria-hidden="true" /><span className="home-rollover-label">Hoy</span></button>}</div> })}
-            {!homeEvents.isLoading && !homeEvents.isError && focusEvents.length === 0 && focusTasks.length === 0 && <EmptyState icon={Sunrise} title="Día despejado" description="Tienes espacio para descansar, reflexionar o elegir un pequeño paso." compact />}
+            {!homeEvents.isLoading && !homeEvents.isError && focusEvents.length === 0 && focusTasks.length === 0 && <div className="home-focus-clear" role="status"><span className="home-focus-clear-icon" aria-hidden="true"><Sunrise size={21} strokeWidth={1.7} /></span><div><strong>Día despejado</strong><p>Nada urgente por ahora. Elige un paso pequeño cuando quieras.</p></div></div>}
           </div>
           <a className="home-focus-plan-link" href="#tasks">Ver todas las tareas <ArrowRight size={15} /></a>
         </section>
         {profile.data && <nav className="home-quick-grid" aria-label="Accesos rápidos"><a href="#journey"><Compass size={18} aria-hidden="true" /><span><strong>Journey</strong><small>Tu recorrido</small></span><ArrowRight size={15} aria-hidden="true" /></a><a href="#notes"><Pencil size={18} aria-hidden="true" /><span><strong>Notas</strong><small>Ideas y recuerdos</small></span><ArrowRight size={15} aria-hidden="true" /></a><a href="#reviews"><Check size={18} aria-hidden="true" /><span><strong>Revisiones</strong><small>Reflexiona</small></span><ArrowRight size={15} aria-hidden="true" /></a><a href="#goals"><Compass size={18} aria-hidden="true" /><span><strong>Metas</strong><small>{activeGoals.length} activas</small></span><ArrowRight size={15} aria-hidden="true" /></a></nav>}
         {profile.data && <a className="home-archive-link" href="#archive"><Archive size={15} /> Ver archivo <ArrowRight size={15} /></a>}
-      </>)}
+      </>}
     </>}
     {view === 'plan' && <>
     <SectionTopbar className="section-topbar-plan" title="Plan" icon={Compass} />

@@ -10,8 +10,8 @@ type Request = <T>(path: string, options?: RequestInit) => Promise<T>
 
 const suggestedAreas = ['Familia', 'Amistades', 'Fe', 'Bienestar', 'Estudios', 'Trabajo']
 
-export function OnboardingFlow({ profile, areas, goals, request, refresh }: {
-  profile: Profile | null; areas: Area[]; goals: Goal[]; request: Request; refresh: () => Promise<void>
+export function OnboardingFlow({ profile, areas, goals, request, refresh, onComplete }: {
+  profile: Profile | null; areas: Area[]; goals: Goal[]; request: Request; refresh: () => Promise<void>; onComplete?: () => void
 }) {
   const [step, setStep] = useState(() => !profile ? 0 : areas.length ? 3 : 1)
   const [name, setName] = useState(profile?.displayName ?? '')
@@ -70,11 +70,14 @@ export function OnboardingFlow({ profile, areas, goals, request, refresh }: {
       }
       await request('/me/onboarding/complete', { method: 'POST' })
       await refresh()
+      onComplete?.()
     })
   }
 
-  return <section className="onboarding" aria-labelledby="onboarding-title">
-    <div className="onboarding-mark"><Compass size={22} /></div>
+  return <main className="onboarding-shell">
+    <header className="onboarding-brand"><Compass size={18} strokeWidth={1.8} aria-hidden="true" /><span>Post Mission</span></header>
+    <section className="onboarding" aria-labelledby="onboarding-title">
+    <div className="onboarding-mark" aria-hidden="true"><Compass size={40} strokeWidth={1.4} /></div>
     <p className="setup-eyebrow">Tu espacio empieza aquí · {step + 1} de 4</p>
     <div className="onboarding-progress" aria-hidden="true">{[0, 1, 2, 3].map((index) => <span key={index} className={index <= step ? 'onboarding-progress-active' : ''} />)}</div>
     {step === 0 && <form onSubmit={saveProfile}>
@@ -108,5 +111,7 @@ export function OnboardingFlow({ profile, areas, goals, request, refresh }: {
       <div className="onboarding-actions"><button type="button" className="onboarding-back" onClick={() => setStep(2)} disabled={pending}><ArrowLeft size={16} /> Atrás</button><button className="onboarding-primary" disabled={pending}>{pending ? 'Guardando…' : 'Entrar a mi espacio'} <ArrowRight size={17} /></button></div>
     </form>}
     {error && <p className="onboarding-error" role="alert">{error}</p>}
-  </section>
+    </section>
+    <p className="onboarding-footnote">Un paso a la vez.</p>
+  </main>
 }

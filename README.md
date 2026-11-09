@@ -22,7 +22,7 @@ Copy-Item .dev.vars.example .dev.vars
 pnpm dev
 ```
 
-The app will show setup instructions until a real Clerk publishable key is configured. There is no mock identity; signed-in users may load optional example data into their own account.
+The app will show setup instructions until a real Clerk publishable key is configured. There is no mock identity; signed-in users manage their own data.
 Vite uses port `5174` to match the local `APP_ORIGIN` configured for Clerk. Keep that origin and the development URL aligned so private API requests can verify the session.
 
 ## Configuration
