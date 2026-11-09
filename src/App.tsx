@@ -1,5 +1,5 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState, type FormEvent } from 'react'
-import { ClerkProvider, Show, SignIn, UserButton, useAuth, useUser } from '@clerk/react-router'
+import { ClerkProvider, Show, SignIn, UserButton, useAuth, useClerk, useUser } from '@clerk/react-router'
 import { QueryClient, QueryClientProvider, useMutation, useQuery, useQueryClient, type UseMutationResult } from '@tanstack/react-query'
 import { Archive, ArrowDown, ArrowRight, ArrowUp, CalendarDays, Check, Circle, Compass, House, LockKeyhole, Map as MapIcon, MoreHorizontal, Pencil, Plus, RotateCcw, Search, Settings2, Smartphone, Sunrise, Users, WifiOff, X } from 'lucide-react'
 import { Toaster, toast } from 'sonner'
@@ -88,6 +88,10 @@ function loadErrorMessage(error: unknown, fallback: string) {
   return error instanceof Error ? error.message : fallback
 }
 
+function isExpiredSession(error: unknown) {
+  return error instanceof Error && 'status' in error && error.status === 401
+}
+
 function currentPlanSection() {
   return window.location.hash === '#goals' ? 'goals' : window.location.hash === '#areas' ? 'areas' : 'tasks'
 }
@@ -106,6 +110,7 @@ function PlanSectionNav({ activeSection }: { activeSection: 'tasks' | 'goals' | 
 
 function Workspace() {
   const { getToken, userId, isLoaded, isSignedIn } = useAuth()
+  const clerk = useClerk()
   const { user } = useUser()
   const queryClient = useQueryClient()
   const [areaName, setAreaName] = useState('')
@@ -222,6 +227,10 @@ function Workspace() {
   const archivedTasks = useQuery({ queryKey: keys.archivedTasks, queryFn: () => apiRequest<Task[]>(getToken, '/tasks?archived=true'), enabled: authReady })
   const profile = useQuery({ queryKey: keys.profile, queryFn: () => apiRequest<Profile | null>(getToken, '/me'), enabled: authReady })
   const accountDeletion = useQuery({ queryKey: ['account-deletion', userId], queryFn: () => apiRequest<AccountDeletionStatus>(getToken, '/account-deletion'), enabled: authReady, retry: retryAccountStatus, refetchOnMount: 'always' })
+  const expiredSession = isExpiredSession(profile.error) || isExpiredSession(accountDeletion.error)
+  useEffect(() => {
+    if (authReady && expiredSession) void clerk.signOut({ redirectUrl: '/' }).catch(() => { /* The recovery button stays available if sign-out fails. */ })
+  }, [authReady, clerk, expiredSession])
   useEffect(() => {
     if (!profile.data) return
     const preference = profile.data.themePreference
@@ -440,7 +449,7 @@ function Workspace() {
     const onboardingLoading = profile.isLoading || areas.isLoading || goals.isLoading || accountDeletion.isLoading
     const onboardingError = profile.error ?? areas.error ?? goals.error ?? accountDeletion.error
     if (onboardingLoading) return <main className="onboarding-shell onboarding-shell-status"><SkeletonRows label="tu bienvenida" rows={3} /></main>
-    if (onboardingError) return <main className="onboarding-shell onboarding-shell-status"><div className="error-banner" role="alert"><p>{loadErrorMessage(onboardingError, 'No pudimos preparar tu bienvenida.')}</p><button type="button" onClick={() => { void queryClient.invalidateQueries() }}>Intentar de nuevo</button></div></main>
+    if (onboardingError) return <main className="onboarding-shell onboarding-shell-status"><div className="error-banner" role="alert"><p>{isExpiredSession(onboardingError) ? 'Tu sesión terminó. Vuelve a entrar para continuar.' : loadErrorMessage(onboardingError, 'No pudimos preparar tu bienvenida.')}</p><button type="button" onClick={() => { if (isExpiredSession(onboardingError)) void clerk.signOut({ redirectUrl: '/' }); else void queryClient.invalidateQueries() }}>{isExpiredSession(onboardingError) ? 'Volver a iniciar sesión' : 'Intentar de nuevo'}</button></div></main>
     return <OnboardingFlow profile={profile.data ?? null} areas={areas.data ?? []} goals={goals.data ?? []} request={(path, options) => apiRequest(getToken, path, options)} refresh={async () => { await queryClient.invalidateQueries() }} onComplete={() => { window.location.hash = '#home' }} />
   }
 
