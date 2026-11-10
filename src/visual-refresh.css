@@ -332,6 +332,11 @@
 .calendar-day-view-heading { align-items: center; border-bottom: 1px solid var(--line-soft); display: flex; gap: 14px; justify-content: space-between; padding: 16px 18px; }
 .calendar-day-view-heading .setup-eyebrow { margin: 0 0 4px; }
 .calendar-day-view-heading h2 { color: var(--navy); font-size: 17px; font-weight: 650; margin: 0; }
+.calendar-time-preference { align-items: center; border-bottom: 1px solid var(--line-soft); display: flex; flex-wrap: wrap; gap: 8px; justify-content: flex-end; padding: 7px 14px; }
+.calendar-time-preference label { align-items: center; color: var(--muted); display: inline-flex; font-size: 11px; gap: 5px; }
+.calendar-time-preference select { background: var(--surface-tint); border: 1px solid var(--line); border-radius: 8px; color: var(--navy); font: inherit; font-size: 11px; min-height: 34px; padding: 4px 8px; }
+.calendar-time-preference select:focus-visible { outline: 3px solid var(--sage-dark); outline-offset: 2px; }
+.calendar-time-preference > span { color: var(--muted); flex-basis: 100%; font-size: 10px; text-align: right; }
 .people-relationship-filters { display: flex; gap: 7px; margin: -8px 0 13px; overflow-x: auto; padding: 2px 0 3px; scrollbar-width: none; touch-action: pan-x; }
 .people-relationship-filters::-webkit-scrollbar { display: none; }
 .people-relationship-filters button { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 999px; color: var(--muted); cursor: pointer; flex: 0 0 auto; font: inherit; font-size: 10px; min-height: 34px; padding: 0 13px; white-space: nowrap; }

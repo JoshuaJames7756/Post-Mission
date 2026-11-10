@@ -1,6 +1,6 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent as ReactPointerEvent } from 'react'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Archive, CalendarDays, Check, ChevronLeft, ChevronRight, Plus, RotateCcw, Sun, X } from 'lucide-react'
+import { Archive, CalendarDays, Check, ChevronLeft, ChevronRight, Clock3, Plus, RotateCcw, Sun, X } from 'lucide-react'
 import { toast } from 'sonner'
 import { addCalendarDays, getCalendarDate } from './date-utils.js'
 import { getLocalDateTimeValue, getOffsetMinutesAt, getZonedDateTimeOptions } from './calendar-time.js'
@@ -23,6 +23,14 @@ const eventColors: { value: EventColor; label: string }[] = [
   { value: 'sage', label: 'Salvia' }, { value: 'amber', label: 'Ámbar' },
   { value: 'navy', label: 'Azul' }, { value: 'slate', label: 'Gris' },
 ]
+const defaultStartHour = 6
+function storedStartHour(userId: string) {
+  try {
+    const stored = window.localStorage.getItem(`post-mission:calendar-start-hour:${userId}`)
+    const value = stored === null ? defaultStartHour : Number(stored)
+    return Number.isInteger(value) && value >= 0 && value <= 12 ? value : defaultStartHour
+  } catch { return defaultStartHour }
+}
 type CalendarEvent = {
   id: string
   title: string
@@ -134,6 +142,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   }, [])
   const [month, setMonth] = useState(() => monthString(new Date(), timeZone))
   const [calendarView, setCalendarView] = useState<'day' | 'month'>('day')
+  const [preferredStartHour, setPreferredStartHour] = useState(() => storedStartHour(userId))
   const [formOpen, setFormOpen] = useState(false)
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null)
   const [selectedDate, setSelectedDate] = useState(() => getCalendarDate(new Date(), timeZone))
@@ -150,6 +159,11 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   const [eventTimeZone, setEventTimeZone] = useState(timeZone)
   const [startOffset, setStartOffset] = useState<number | null>(null)
   const [endOffset, setEndOffset] = useState<number | null>(null)
+
+  function changeStartHour(hour: number) {
+    setPreferredStartHour(hour)
+    try { window.localStorage.setItem(`post-mission:calendar-start-hour:${userId}`, String(hour)) } catch { /* La agenda sigue funcionando sin almacenamiento local. */ }
+  }
 
   useEffect(() => {
     const dialog = eventDialogRef.current
@@ -238,14 +252,6 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
     requestAnimationFrame(() => {
       scrollToTimelineMinute(minute)
     })
-  }
-
-  function scrollToTimelineMinute(minute: number) {
-    const timeline = timelineScrollRef.current
-    if (!timeline) return
-    const pageTop = timeline.getBoundingClientRect().top + window.scrollY
-    const contextAbove = Math.min(220, Math.max(120, window.innerHeight * 0.28))
-    window.scrollTo({ top: Math.max(0, pageTop + minute - contextAbove), behavior: 'auto' })
   }
 
   function resetForm(date: string) {
@@ -339,7 +345,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
     if (!slots) return null
     const bounds = slots.getBoundingClientRect()
     if (clientX < bounds.left || clientX > bounds.right || clientY < bounds.top || clientY > bounds.bottom) return null
-    return Math.max(0, Math.min(1380, Math.round((clientY - bounds.top) / 15) * 15))
+    return Math.max(visibleStartMinute, Math.min(1380, visibleStartMinute + Math.round((clientY - bounds.top) / 15) * 15))
   }
 
   function continueAllDayDragging(pointer: ReactPointerEvent<HTMLButtonElement>) {
@@ -396,7 +402,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   function dragTarget(gesture: DragGesture, clientY: number) {
     const distance = clientY - gesture.startY + window.scrollY - gesture.startPageScrollY
     if (gesture.mode === 'resize') return { start: gesture.startMinute, end: snapEventEnd(gesture.startMinute, gesture.endMinute, distance) }
-    const start = snapEventStart(gesture.startMinute, distance, gesture.durationMinutes)
+    const start = Math.max(visibleStartMinute, snapEventStart(gesture.startMinute, distance, gesture.durationMinutes))
     return { start, end: start + gesture.durationMinutes }
   }
 
@@ -432,7 +438,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
     const direction = key === 'ArrowDown' ? 15 : -15
     const target = resize
       ? { start: range.startMinute, end: snapEventEnd(range.startMinute, range.endMinute, direction) }
-      : (() => { const start = snapEventStart(range.startMinute, direction, range.durationMinutes); return { start, end: start + range.durationMinutes } })()
+      : (() => { const start = Math.max(visibleStartMinute, snapEventStart(range.startMinute, direction, range.durationMinutes)); return { start, end: start + range.durationMinutes } })()
     if (target.start !== range.startMinute || target.end !== range.endMinute) {
       setDragPreview({ id: event.id, ...target })
       moveEvent(event, resize ? target.end : target.start, resize ? 'resize' : 'move')
@@ -501,7 +507,18 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
   const timelineHourHeight = 60
   const localNow = getLocalDateTimeValue(now.toISOString(), timeZone)
   const nowMinutes = Number(localNow.slice(11, 13)) * 60 + Number(localNow.slice(14, 16))
-  const initialTimelineMinute = selectedDate === today ? nowMinutes : timelineEntries[0]?.start ?? 8 * 60
+  const visibleStartHour = Math.min(preferredStartHour, timelineEntries[0] ? Math.floor(timelineEntries[0].start / 60) : 24, selectedDate === today ? Math.floor(nowMinutes / 60) : 24)
+  const visibleStartMinute = visibleStartHour * 60
+  const visibleTimelineHeight = (24 - visibleStartHour) * timelineHourHeight
+  const visibleHours = Array.from({ length: 24 - visibleStartHour }, (_, index) => visibleStartHour + index)
+  const initialTimelineMinute = selectedDate === today ? nowMinutes : timelineEntries[0]?.start ?? visibleStartMinute
+  const scrollToTimelineMinute = useCallback((minute: number) => {
+    const timeline = timelineScrollRef.current
+    if (!timeline) return
+    const pageTop = timeline.getBoundingClientRect().top + window.scrollY
+    const contextAbove = Math.min(220, Math.max(120, window.innerHeight * 0.28))
+    window.scrollTo({ top: Math.max(0, pageTop + Math.max(0, minute - visibleStartMinute) - contextAbove), behavior: 'auto' })
+  }, [visibleStartMinute])
 
   useEffect(() => {
     if (calendarView !== 'day') { positionedDayRef.current = null; return }
@@ -515,7 +532,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
       }
     })
     return () => cancelAnimationFrame(frame)
-  }, [calendarView, events.error, events.isLoading, initialTimelineMinute, selectedDate, timeZone])
+  }, [calendarView, events.error, events.isLoading, initialTimelineMinute, scrollToTimelineMinute, selectedDate, timeZone])
 
   return <section className="calendar-page" aria-label="Agenda">
     <SectionTopbar className="section-topbar-calendar" title="Agenda" icon={CalendarDays} actions={<div className="calendar-view-switch" role="group" aria-label="Vista de agenda">
@@ -552,14 +569,15 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
             const schedulable = event.status === 'scheduled' && event.startDate === selectedDate && event.endDate === selectedDate
             return <button key={event.id} type="button" className={`calendar-all-day-event calendar-event-${event.color}${schedulable ? ' calendar-all-day-event-draggable' : ''}`} onPointerDown={(pointer) => startAllDayDragging(event, pointer)} onPointerMove={continueAllDayDragging} onPointerUp={(pointer) => stopAllDayDragging(pointer)} onPointerCancel={(pointer) => stopAllDayDragging(pointer, true)} onClick={() => { if (suppressClickRef.current === event.id) { suppressClickRef.current = null; return } editEvent(event) }} aria-label={`${schedulable ? 'Arrastrar al horario o editar' : 'Editar'} ${event.title}`} title={schedulable ? 'Arrastra al horario para asignar una hora. Toca para editar.' : 'Editar evento'}><strong>{event.title}</strong><small>{event.category}{schedulable ? ' · Arrastra al horario' : ''}</small>{areaForGoal(event.goalId, goals, areas) && <AreaTag name={areaForGoal(event.goalId, goals, areas)!.name} />}</button>
           })}</div>}
+          <div className="calendar-time-preference"><label htmlFor="calendar-start-hour"><Clock3 size={15} aria-hidden="true" />Mostrar desde</label><select id="calendar-start-hour" aria-label="Primera hora visible" value={preferredStartHour} onChange={(event) => changeStartHour(Number(event.target.value))}>{Array.from({ length: 13 }, (_, hour) => <option value={hour} key={hour}>{String(hour).padStart(2, '0')}:00</option>)}</select>{visibleStartHour < preferredStartHour && <span>Se incluye una hora anterior por un evento o por la hora actual.</span>}</div>
           <div className="calendar-time-scroll" ref={timelineScrollRef} role="region" tabIndex={0} aria-label={`Horario del ${selectedDayLabel}`}>
           <div className="calendar-time-grid">
-            <div className="calendar-time-labels" aria-hidden="true">{Array.from({ length: 24 }, (_, hour) => <time key={hour} style={{ top: `${hour * timelineHourHeight}px` }}>{String(hour).padStart(2, '0')}:00</time>)}</div>
-            <div className="calendar-time-slots">
-              {Array.from({ length: 24 }, (_, hour) => <button className="calendar-hour-hit-area" type="button" tabIndex={-1} key={hour} style={{ top: `${hour * timelineHourHeight}px`, height: `${timelineHourHeight}px` }} aria-label={`Crear evento el ${selectedDayLabel} a las ${String(hour).padStart(2, '0')}:00`} onClick={() => createTimedEvent(selectedDate, hour)} />)}
-              {Array.from({ length: 24 }, (_, hour) => <div className="calendar-hour-line" key={hour} style={{ top: `${hour * timelineHourHeight}px` }} aria-hidden="true" />)}
-              {selectedDate === today && <div className="calendar-current-time" style={{ top: `${nowMinutes}px` }} aria-hidden="true"><span>Ahora · {formatTime(now.toISOString(), timeZone)}</span></div>}
-              {allDayDragPreview && <div className="calendar-all-day-drop-preview" style={{ top: `${allDayDragPreview.minute}px` }} aria-hidden="true"><strong>{allDayDragPreview.title}</strong><span>{minuteLabel(allDayDragPreview.minute)} – {minuteLabel(allDayDragPreview.minute + 60)}</span></div>}
+            <div className="calendar-time-labels" style={{ height: `${visibleTimelineHeight}px` }} aria-hidden="true">{visibleHours.map((hour) => <time key={hour} style={{ top: `${(hour - visibleStartHour) * timelineHourHeight}px` }}>{String(hour).padStart(2, '0')}:00</time>)}</div>
+            <div className="calendar-time-slots" style={{ height: `${visibleTimelineHeight}px` }}>
+              {visibleHours.map((hour) => <button className="calendar-hour-hit-area" type="button" tabIndex={-1} key={hour} style={{ top: `${(hour - visibleStartHour) * timelineHourHeight}px`, height: `${timelineHourHeight}px` }} aria-label={`Crear evento el ${selectedDayLabel} a las ${String(hour).padStart(2, '0')}:00`} onClick={() => createTimedEvent(selectedDate, hour)} />)}
+              {visibleHours.map((hour) => <div className="calendar-hour-line" key={hour} style={{ top: `${(hour - visibleStartHour) * timelineHourHeight}px` }} aria-hidden="true" />)}
+              {selectedDate === today && <div className="calendar-current-time" style={{ top: `${nowMinutes - visibleStartMinute}px` }} aria-hidden="true"><span>Ahora · {formatTime(now.toISOString(), timeZone)}</span></div>}
+              {allDayDragPreview && <div className="calendar-all-day-drop-preview" style={{ top: `${allDayDragPreview.minute - visibleStartMinute}px` }} aria-hidden="true"><strong>{allDayDragPreview.title}</strong><span>{minuteLabel(allDayDragPreview.minute)} – {minuteLabel(allDayDragPreview.minute + 60)}</span></div>}
               {timelineEntries.map(({ event, start, end, lane, laneCount }) => {
                 const range = resizableEventRange(event, selectedDate, timeZone)
                 const movable = range !== null
@@ -569,7 +587,7 @@ export function CalendarPage({ userId, timeZone, goals, areas = [], request }: C
                 const label = dragPreview?.id === event.id
                   ? `${minuteLabel(previewStart)} – ${minuteLabel(previewEnd)}`
                   : `${formatTime(event.startAt!, timeZone)} – ${formatTime(event.endAt!, timeZone)}`
-                return <button key={event.id} type="button" className={`calendar-time-event calendar-event-${event.color}${event.status === 'completed' ? ' calendar-event-completed' : ''}${movable ? ' calendar-time-event-movable' : ''}${resizable ? ' calendar-time-event-resizable' : ''}${dragPreview?.id === event.id ? ' calendar-time-event-dragging' : ''}`} style={{ top: `${previewStart / 60 * timelineHourHeight}px`, height: `${Math.max(38, (previewEnd - previewStart) / 60 * timelineHourHeight - 4)}px`, left: `${lane * 100 / laneCount}%`, width: `${100 / laneCount}%` }} onPointerDown={(pointer) => startDragging(event, pointer)} onPointerMove={continueDragging} onPointerUp={(pointer) => stopDragging(pointer)} onPointerCancel={(pointer) => stopDragging(pointer, true)} onKeyDown={(key) => { if (key.altKey && (key.key === 'ArrowUp' || key.key === 'ArrowDown')) { key.preventDefault(); moveWithKeyboard(event, key.key, key.shiftKey) } }} onClick={() => { if (suppressClickRef.current === event.id) { suppressClickRef.current = null; return } editEvent(event) }} aria-label={`Editar ${event.title}, ${dragPreview?.id === event.id ? minuteLabel(previewStart) : formatTime(event.startAt!, timeZone)} a ${dragPreview?.id === event.id ? minuteLabel(previewEnd) : formatTime(event.endAt!, timeZone)}`} aria-keyshortcuts={movable ? 'Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown' : undefined} title={movable ? 'Arrastra para mover. Arrastra el borde inferior para cambiar la duración. Alt + flechas mueve; Alt + Mayús + flechas cambia la duración.' : 'Editar evento'}><strong>{event.title}</strong><span>{label}</span>{areaForGoal(event.goalId, goals, areas) && <AreaTag name={areaForGoal(event.goalId, goals, areas)!.name} />}</button>
+                return <button key={event.id} type="button" className={`calendar-time-event calendar-event-${event.color}${event.status === 'completed' ? ' calendar-event-completed' : ''}${movable ? ' calendar-time-event-movable' : ''}${resizable ? ' calendar-time-event-resizable' : ''}${dragPreview?.id === event.id ? ' calendar-time-event-dragging' : ''}`} style={{ top: `${previewStart - visibleStartMinute}px`, height: `${Math.max(38, (previewEnd - previewStart) / 60 * timelineHourHeight - 4)}px`, left: `${lane * 100 / laneCount}%`, width: `${100 / laneCount}%` }} onPointerDown={(pointer) => startDragging(event, pointer)} onPointerMove={continueDragging} onPointerUp={(pointer) => stopDragging(pointer)} onPointerCancel={(pointer) => stopDragging(pointer, true)} onKeyDown={(key) => { if (key.altKey && (key.key === 'ArrowUp' || key.key === 'ArrowDown')) { key.preventDefault(); moveWithKeyboard(event, key.key, key.shiftKey) } }} onClick={() => { if (suppressClickRef.current === event.id) { suppressClickRef.current = null; return } editEvent(event) }} aria-label={`Editar ${event.title}, ${dragPreview?.id === event.id ? minuteLabel(previewStart) : formatTime(event.startAt!, timeZone)} a ${dragPreview?.id === event.id ? minuteLabel(previewEnd) : formatTime(event.endAt!, timeZone)}`} aria-keyshortcuts={movable ? 'Alt+ArrowUp Alt+ArrowDown Alt+Shift+ArrowUp Alt+Shift+ArrowDown' : undefined} title={movable ? 'Arrastra para mover. Arrastra el borde inferior para cambiar la duración. Alt + flechas mueve; Alt + Mayús + flechas cambia la duración.' : 'Editar evento'}><strong>{event.title}</strong><span>{label}</span>{areaForGoal(event.goalId, goals, areas) && <AreaTag name={areaForGoal(event.goalId, goals, areas)!.name} />}</button>
               })}
             </div>
           </div>
