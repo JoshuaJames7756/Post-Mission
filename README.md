@@ -57,3 +57,4 @@ The automated suite covers health/auth boundaries, domain rules, coordinate/time
 
 The PWA foundation includes a web manifest, app icons, and a service worker that pre-caches the public shell and its initial versioned JavaScript and CSS. Other versioned static assets are cached when requested. Requests under `/api/` bypass the service worker cache, and writes still require a network connection. The cache behavior is covered by service-worker tests and the assets returned 200 in a production preview; installation and offline behavior on a phone still need verification before launch.
 Confirmed
+Yes
